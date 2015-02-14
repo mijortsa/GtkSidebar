@@ -45,6 +45,10 @@ public class Sidebar : Gtk.TreeView {
         public Item (string name = "") {
             this.name = name;
         }
+
+        public virtual Gtk.Menu? get_context_menu () {
+            return null;
+        }
     }
 
     public class ExpandableItem : Item {
@@ -145,6 +149,15 @@ public class Sidebar : Gtk.TreeView {
         }
     }
 
+    /*
+     * Sidebar class begins here
+     */
+
+    public Item? selected {
+        owned get {
+            return get_selected_item ();
+        }
+    }
     private Gee.HashMap<Item, ItemWrapper> items = new Gee.HashMap<Item, ItemWrapper> ();
 
     private Gtk.TreeStore data_model;
@@ -231,9 +244,9 @@ public class Sidebar : Gtk.TreeView {
     }
 
     private void icon1_data_func (Gtk.CellLayout cell_layout,
-                                 Gtk.CellRenderer renderer,
-                                 Gtk.TreeModel tree_model,
-                                 Gtk.TreeIter iter) {
+                                  Gtk.CellRenderer renderer,
+                                  Gtk.TreeModel tree_model,
+                                  Gtk.TreeIter iter) {
 
         var icon_renderer = renderer as Gtk.CellRendererPixbuf;
         assert (icon_renderer != null);
@@ -245,9 +258,9 @@ public class Sidebar : Gtk.TreeView {
     }
 
     private void icon2_data_func (Gtk.CellLayout cell_layout,
-                                 Gtk.CellRenderer renderer,
-                                 Gtk.TreeModel tree_model,
-                                 Gtk.TreeIter iter) {
+                                  Gtk.CellRenderer renderer,
+                                  Gtk.TreeModel tree_model,
+                                  Gtk.TreeIter iter) {
 
         var icon_renderer = renderer as Gtk.CellRendererPixbuf;
         assert (icon_renderer != null);
@@ -256,6 +269,57 @@ public class Sidebar : Gtk.TreeView {
 
         icon_renderer.visible = item.icon2_visible;
         icon_renderer.icon_name = item.icon2;
+    }
+    private bool popup_context_menu (Item? item, Gdk.EventButton? ev) {
+        if (item != null) {
+            var menu = item.get_context_menu ();
+            if (menu != null) {
+                var time = (ev != null) ? ev.time : Gtk.get_current_event_time ();
+                var button = (ev != null) ? ev.button : 0;
+
+                menu.attach_to_widget (this, null);
+
+                if (event != null) {
+                    menu.popup (null, null, null, button, time);
+                } else {
+                    menu.popup (null, null, menu_position_func, button, time);
+                    menu.select_first (false);
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void menu_position_func (Gtk.Menu menu, out int x,
+                                     out int y, out bool push_in) {
+
+        push_in = true;
+        x = y = 0;
+
+        var path = data_model.get_path (get_item_iter (selected));
+        if (path == null)
+            return;
+
+        // Try to find the position of the item
+        Gdk.Rectangle item_bin_coords;
+        get_cell_area (path, get_column (Column.ITEM), out item_bin_coords);
+
+        int item_y = item_bin_coords.y + item_bin_coords.height / 2;
+        int item_x = item_bin_coords.x;
+
+        int widget_x, widget_y;
+        convert_bin_window_to_widget_coords (item_x, item_y, out widget_x, out widget_y);
+
+        get_window ().get_origin (out x, out y);
+        x += widget_x.clamp (0, get_allocated_width ());
+        y += widget_y.clamp (0, get_allocated_height ());
+
+        Gtk.Requisition menu_req;
+        menu.get_preferred_size (out menu_req, null);
+        y -= menu_req.width;
     }
 
     private Item? get_item (Gtk.TreeIter iter) {
@@ -269,16 +333,61 @@ public class Sidebar : Gtk.TreeView {
         return wrapped_item.iter;
     }
 
+    private Item? get_item_from_path (Gtk.TreePath path) {
+        Gtk.TreeIter iter;
+        Item? item = null;
+
+        if (data_model.get_iter (out iter, path)) {
+            item = get_item (iter);
+        }
+        return item;
+    }
+
+    private Item? get_selected_item () {
+        var selection = get_selection ();
+
+        Gtk.TreeIter iter;
+        selection.get_selected (null, out iter);
+        return get_item (iter);
+    }
+
     public override void row_activated (Gtk.TreePath path,
                                         Gtk.TreeViewColumn column) {
 
         if (column == get_column (Column.ITEM)) {
-            Item item;
-            Gtk.TreeIter iter;
-            if (data_model.get_iter (out iter, path)) {
-                item = get_item (iter);
-                item.activated ();
+            Item item = get_item_from_path (path);
+            item.activated ();
+        }
+    }
+
+    public override bool button_press_event (Gdk.EventButton ev) {
+        if (ev.window != get_bin_window ()) {
+            return base.button_press_event (ev);
+        }
+
+        Gtk.TreePath path;
+        Gtk.TreeViewColumn column;
+        int x, y, cell_x, cell_y;
+
+        x = (int) ev.x;
+        y = (int) ev.y;
+
+        if (get_path_at_pos (x, y, out path, out column,
+                             out cell_x, out cell_y)) {
+
+            var item = get_item_from_path (path);
+
+            Gdk.Rectangle start_cell_area;
+            get_cell_area (path, get_column (0), out start_cell_area);
+            cell_x -= start_cell_area.x;
+
+            if (item != null && column == get_column (Column.ITEM)) {
+
+                if (ev.button == Gdk.BUTTON_SECONDARY) {
+                    popup_context_menu (item, ev);
+                }
             }
         }
+        return base.button_press_event (ev);
     }
 }
