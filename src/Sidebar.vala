@@ -130,7 +130,6 @@ public class Sidebar : Gtk.TreeView {
     }
 
     public void add_item (Item item) {
-        // TODO: update item_parent_iter
         Gtk.TreeIter? item_parent_iter = null, item_iter;
 
         if (item.parent != null) {
@@ -162,7 +161,6 @@ public class Sidebar : Gtk.TreeView {
     private void setup_ui () {
         // TODO: setup the item in the following format
         // [icon] [title] [progress bar] [icon]
-
         activate_on_single_click = true;
         headers_visible = false;
 
