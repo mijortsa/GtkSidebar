@@ -48,8 +48,11 @@ public class Application : Gtk.Window {
             stack.set_visible_child_name ("box-2");
         });
 
-        sidebar.add_item (item1);
+        var ex_item = new Sidebar.ExpandableItem ("Parent");
+        ex_item.add (item1);
+
         sidebar.add_item (item2);
+        sidebar.add_item (ex_item);
 
         layout.add1 (sidebar);
         layout.add2 (container);

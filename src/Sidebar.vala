@@ -1,10 +1,13 @@
 public class Sidebar : Gtk.TreeView {
 
+    // TODO: add signals for icon and right click
+    // TODO: item types needed -> progressbar item
     public class Item : Object {
 
         public string name { get; set; }
         public bool visible { get; set; default = true;}
         public Item parent { get; internal set; }
+        // TODO: switch to pixbuf asap
         public string icon_name { get; set; }
 
         public signal void activated ();
@@ -51,6 +54,7 @@ public class Sidebar : Gtk.TreeView {
         }
 
         public void add (Item item) {
+            item.parent = this;
             children_list.add (item);
         }
 
@@ -66,6 +70,50 @@ public class Sidebar : Gtk.TreeView {
             }
         }
     }
+
+    private class ItemWrapper : Object {
+
+        private Gtk.TreeRowReference? row_reference;
+
+        public bool valid {
+            get {
+                if (row_reference != null) {
+                    var rref = (!) row_reference;
+                    return rref.valid ();
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        public Gtk.TreePath? path {
+            owned get {
+                return valid ? row_reference.get_path () : null;
+            }
+        }
+
+        public Gtk.TreeIter? iter {
+            owned get {
+                Gtk.TreeIter? it = null;
+                if (valid) {
+                    var _path = this.path;
+                    Gtk.TreeIter iter_tmp;
+                    if (row_reference.get_model ().get_iter (out iter_tmp, _path)) {
+                        it = iter_tmp;
+                    }
+                }
+                return it;
+            }
+        }
+
+
+        public ItemWrapper (Gtk.TreeStore store, Gtk.TreeIter iter) {
+            row_reference = new Gtk.TreeRowReference (store,
+                                                      store.get_path (iter));
+        }
+    }
+
+    private Gee.HashMap<Item, ItemWrapper> items = new Gee.HashMap<Item, ItemWrapper> ();
 
     private Gtk.TreeStore data_model;
 
@@ -86,14 +134,35 @@ public class Sidebar : Gtk.TreeView {
         Gtk.TreeIter? item_parent_iter = null, item_iter;
 
         if (item.parent != null) {
-            // TODO: add item to hashmap and check if it already exists
-            add_item (item.parent);
+            if (!has_item (item.parent)) {
+                add_item (item.parent);
+            }
+            item_parent_iter = get_item_iter (item.parent);
+
+            assert (item_parent_iter != null);
         }
+
         data_model.append (out item_iter, item_parent_iter);
         data_model.set (item_iter, Column.ITEM, item, -1);
+
+        items.set (item, new ItemWrapper (data_model, item_iter));
+
+        var ex_item = item as ExpandableItem;
+        if (ex_item != null) {
+            foreach (var child_item in ex_item.children) {
+                add_item (child_item);
+            }
+        }
+    }
+
+    public bool has_item (Item item) {
+        return items.has_key (item);
     }
 
     private void setup_ui () {
+        // TODO: setup the item in the following format
+        // [icon] [title] [progress bar] [icon]
+
         activate_on_single_click = true;
         headers_visible = false;
 
@@ -144,6 +213,11 @@ public class Sidebar : Gtk.TreeView {
         Item? item;
         data_model.get (iter, Column.ITEM, out item, -1);
         return item;
+    }
+
+    private Gtk.TreeIter get_item_iter (Item item) {
+        var wrapped_item = items.get (item);
+        return wrapped_item.iter;
     }
 
     public override void row_activated (Gtk.TreePath path,
