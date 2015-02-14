@@ -5,10 +5,40 @@ public class Sidebar : Gtk.TreeView {
     public class Item : Object {
 
         public string name { get; set; }
-        public bool visible { get; set; default = true;}
+        public bool visible { get; set; default = true; }
         public Item parent { get; internal set; }
-        // TODO: switch to pixbuf asap
-        public string icon_name { get; set; }
+
+        public bool icon1_visible { get; set; default = false; }
+        private string _icon1;
+        public string? icon1 {
+            get {
+                return _icon1;
+            }
+            set {
+                if (value != null) {
+                    icon1_visible = true;
+                    _icon1 = value;
+                } else {
+                    icon1_visible = false;
+                }
+            }
+        }
+
+        public bool icon2_visible { get; set; default = false; }
+        private string _icon2;
+        public string? icon2 {
+            get {
+                return _icon2;
+            }
+            set {
+                if (value != null) {
+                    icon2_visible = true;
+                    _icon2 = value;
+                } else {
+                    icon2_visible = false;
+                }
+            }
+        }
 
         public signal void activated ();
 
@@ -39,6 +69,7 @@ public class Sidebar : Gtk.TreeView {
             }
         }
 
+        // TODO: toggled is not yet called
         public signal void toggled ();
         public signal void child_added (Item item);
         public signal void child_removed (Item item);
@@ -56,6 +87,7 @@ public class Sidebar : Gtk.TreeView {
         public void add (Item item) {
             item.parent = this;
             children_list.add (item);
+            child_added (item);
         }
 
         public void remove (Item item) {
@@ -169,13 +201,18 @@ public class Sidebar : Gtk.TreeView {
 
         insert_column (item_column, Column.ITEM);
 
-        var icon_renderer = new Gtk.CellRendererPixbuf ();
-        item_column.pack_start (icon_renderer, false);
-        item_column.set_cell_data_func (icon_renderer, icon_data_func);
+        var icon1_renderer = new Gtk.CellRendererPixbuf ();
+        item_column.pack_start (icon1_renderer, false);
+        item_column.set_cell_data_func (icon1_renderer, icon1_data_func);
 
         var name_renderer = new Gtk.CellRendererText ();
         item_column.pack_start (name_renderer, false);
         item_column.set_cell_data_func (name_renderer, name_data_func);
+
+        var icon2_renderer = new Gtk.CellRendererPixbuf ();
+        item_column.pack_end (icon2_renderer, false);
+        item_column.set_cell_data_func (icon2_renderer, icon2_data_func);
+
     }
 
     private void name_data_func (Gtk.CellLayout cell_layout,
@@ -193,7 +230,7 @@ public class Sidebar : Gtk.TreeView {
         text_renderer.text = item.name;
     }
 
-    private void icon_data_func (Gtk.CellLayout cell_layout,
+    private void icon1_data_func (Gtk.CellLayout cell_layout,
                                  Gtk.CellRenderer renderer,
                                  Gtk.TreeModel tree_model,
                                  Gtk.TreeIter iter) {
@@ -203,8 +240,22 @@ public class Sidebar : Gtk.TreeView {
 
         var item = get_item (iter);
 
-        icon_renderer.visible = item.visible;
-        icon_renderer.icon_name = item.icon_name;
+        icon_renderer.visible = item.icon1_visible;
+        icon_renderer.icon_name = item.icon1;
+    }
+
+    private void icon2_data_func (Gtk.CellLayout cell_layout,
+                                 Gtk.CellRenderer renderer,
+                                 Gtk.TreeModel tree_model,
+                                 Gtk.TreeIter iter) {
+
+        var icon_renderer = renderer as Gtk.CellRendererPixbuf;
+        assert (icon_renderer != null);
+
+        var item = get_item (iter);
+
+        icon_renderer.visible = item.icon2_visible;
+        icon_renderer.icon_name = item.icon2;
     }
 
     private Item? get_item (Gtk.TreeIter iter) {

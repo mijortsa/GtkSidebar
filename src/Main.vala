@@ -4,7 +4,7 @@ public class Application : Gtk.Window {
 	public Application () {
 		this.title = "Sidebar Demo";
 		this.destroy.connect (Gtk.main_quit);
-		this.set_default_size (250, 400);
+		this.set_default_size (600, 600);
 
         setup_ui ();
 	}
@@ -36,22 +36,26 @@ public class Application : Gtk.Window {
         var sidebar = new Sidebar ();
 
         var item1 = new Sidebar.Item ("Box 1");
-        item1.icon_name = "document-open";
+        item1.icon1 = "go-previous-symbolic";
+        item1.icon2 = "edit-delete-symbolic";
+
+
         item1.activated.connect (() => {
             print ("Item 1\n");
             stack.set_visible_child_name ("box-1");
         });
 
         var item2 = new Sidebar.Item ("Box 2");
+        item2.icon2 = "editdelete";
         item2.activated.connect (() => {
             print ("Item 2\n");
             stack.set_visible_child_name ("box-2");
         });
 
         var ex_item = new Sidebar.ExpandableItem ("Parent");
-        ex_item.add (item1);
+        ex_item.add (item2);
 
-        sidebar.add_item (item2);
+        sidebar.add_item (item1);
         sidebar.add_item (ex_item);
 
         layout.add1 (sidebar);
