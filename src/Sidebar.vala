@@ -279,7 +279,7 @@ public class Sidebar : Gtk.TreeView {
 
                 menu.attach_to_widget (this, null);
 
-                if (event != null) {
+                if (ev != null) {
                     menu.popup (null, null, null, button, time);
                 } else {
                     menu.popup (null, null, menu_position_func, button, time);
